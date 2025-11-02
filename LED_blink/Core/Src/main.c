@@ -45,17 +45,32 @@
 
 /* USER CODE BEGIN PV */
 
+uint8_t btn_press = 0;
+
+uint16_t blink_delays[] = {
+		500,
+		200,
+		100
+};
+
+uint8_t blink_delay = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	if (GPIO_Pin == BTN_Pin) {
+		btn_press = 1;
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -88,6 +103,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+
+  /* Initialize interrupts */
+  MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -100,10 +118,17 @@ int main(void)
   {
 	now = HAL_GetTick();
 
-	if (now - last_blink >= 500) {
+	if (now - last_blink >= blink_delays[blink_delay]) {
 		HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
 		last_blink = now;
 		HAL_UART_Transmit(&huart2, (uint8_t *) "LED toggled\r\n", strlen("LED toggled\n\r"), 1000);
+	}
+
+	if (btn_press) {
+		HAL_UART_Transmit(&huart2, (uint8_t *)"Btn pressed\n", strlen("Btn pressed\n"), 1000);
+		++blink_delay;
+		if (blink_delay >= sizeof(blink_delays)/sizeof(blink_delays[0])) blink_delay = 0;
+		btn_press = 0;
 	}
     /* USER CODE END WHILE */
 
@@ -148,6 +173,17 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief NVIC Configuration.
+  * @retval None
+  */
+static void MX_NVIC_Init(void)
+{
+  /* EXTI15_10_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 /* USER CODE BEGIN 4 */
